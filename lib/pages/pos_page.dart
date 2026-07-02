@@ -101,7 +101,7 @@ class _PosPageState extends State<PosPage> {
             controller: _searchController,
             onChanged: (val) => state.setSearchQuery(val),
             decoration: InputDecoration(
-              hintText: 'Cari nama produk koko atau SKU...',
+              hintText: 'Cari nama produk koko...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -226,16 +226,19 @@ class _PosPageState extends State<PosPage> {
                   ),
                 ),
                 child: product.imagePath != null
-                    ? Image.file(
-                        File(product.imagePath!),
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(Icons.broken_image, color: AppTheme.roseRed),
-                          );
-                        },
+                    ? GestureDetector(
+                        onTap: () => AppTheme.showZoomedImage(context, product.imagePath),
+                        child: Image.file(
+                          File(product.imagePath!),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(Icons.broken_image, color: AppTheme.roseRed),
+                            );
+                          },
+                        ),
                       )
                     : Icon(
                         Icons.checkroom,
@@ -324,6 +327,10 @@ class _PosPageState extends State<PosPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -408,18 +415,24 @@ class _PosPageState extends State<PosPage> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppTheme.primaryGold.withOpacity(0.2)
+                                    ? AppTheme.primaryGold
                                     : isOutOfStock
-                                        ? Colors.black26
-                                        : AppTheme.cardColor,
+                                        ? (Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white10
+                                            : Colors.grey.shade200)
+                                        : (Theme.of(context).brightness == Brightness.dark
+                                            ? AppTheme.cardColor
+                                            : Colors.grey.shade100),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: isSelected
                                       ? AppTheme.primaryGold
                                       : isOutOfStock
-                                          ? Colors.white10
-                                          : AppTheme.mutedTextColor.withOpacity(0.2),
-                                  width: isSelected ? 2 : 1,
+                                          ? Colors.transparent
+                                          : (Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white10
+                                              : Colors.grey.shade300),
+                                  width: 1.5,
                                 ),
                               ),
                               child: Column(
@@ -428,8 +441,14 @@ class _PosPageState extends State<PosPage> {
                                     size,
                                     style: TextStyle(
                                       color: isOutOfStock
-                                          ? AppTheme.mutedTextColor.withOpacity(0.4)
-                                          : AppTheme.textColor,
+                                          ? (Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white24
+                                              : Colors.grey.shade400)
+                                          : isSelected
+                                              ? Colors.black
+                                              : (Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.white
+                                                  : Colors.black87),
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
@@ -441,7 +460,7 @@ class _PosPageState extends State<PosPage> {
                                       color: isOutOfStock
                                           ? AppTheme.roseRed.withOpacity(0.6)
                                           : isSelected
-                                              ? AppTheme.lightGold
+                                              ? Colors.black54
                                               : AppTheme.mutedTextColor,
                                       fontSize: 11,
                                     ),
@@ -630,9 +649,33 @@ class _PosPageState extends State<PosPage> {
       },
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.primaryGold.withOpacity(0.3), width: 1),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(7),
+            child: item.product.imagePath != null
+                ? GestureDetector(
+                    onTap: () => AppTheme.showZoomedImage(context, item.product.imagePath),
+                    child: Image.file(
+                      File(item.product.imagePath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 20, color: Colors.white),
+                    ),
+                  )
+                : Container(
+                    color: AppTheme.primaryGold.withOpacity(0.1),
+                    child: const Icon(Icons.checkroom, color: AppTheme.primaryGold, size: 20),
+                  ),
+          ),
+        ),
         title: Text(
           item.product.nama,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -669,7 +712,7 @@ class _PosPageState extends State<PosPage> {
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               child: Text(
                 '${item.kuantitas}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
               ),
             ),
             IconButton(
@@ -802,8 +845,9 @@ class _PosPageState extends State<PosPage> {
           builder: (context, setModalState) {
             final isTunai = state.metodePembayaran == 'Tunai';
             final isMerchantDetailsMissing = !isTunai &&
-                state.merchantQrisPath == null &&
-                state.merchantAccountNo.isEmpty;
+                (state.merchantPaymentType == 'QRIS'
+                    ? state.merchantQrisPath == null
+                    : state.merchantAccountNo.isEmpty);
             final isProofOk = !isTunai && !isMerchantDetailsMissing && state.buktiTransferPath != null;
             final isCashOk = isTunai && !state.isBayarKurang;
             final canCheckout = isCashOk || isProofOk;
@@ -1016,6 +1060,7 @@ class _PosPageState extends State<PosPage> {
                                 ),
                               ),
                             ] else ...[
+                            if (state.merchantPaymentType == 'QRIS') ...[
                               if (state.merchantQrisPath != null) ...[
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -1024,23 +1069,27 @@ class _PosPageState extends State<PosPage> {
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: AppTheme.primaryGold, width: 1.5),
                                   ),
-                                  child: Image.file(
-                                    File(state.merchantQrisPath!),
-                                    height: 180,
-                                    width: 180,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const SizedBox(
-                                        height: 100,
-                                        child: Center(
-                                          child: Icon(Icons.broken_image, color: AppTheme.roseRed, size: 40),
-                                        ),
-                                      );
-                                    },
+                                  child: GestureDetector(
+                                    onTap: () => AppTheme.showZoomedImage(context, state.merchantQrisPath),
+                                    child: Image.file(
+                                      File(state.merchantQrisPath!),
+                                      height: 180,
+                                      width: 180,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const SizedBox(
+                                          height: 100,
+                                          child: Center(
+                                            child: Icon(Icons.broken_image, color: AppTheme.roseRed, size: 40),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                               ],
+                            ] else ...[
                               if (state.merchantAccountNo.isNotEmpty) ...[
                                 Text(
                                   'TRANSFER BANK',
@@ -1054,7 +1103,7 @@ class _PosPageState extends State<PosPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${state.merchantBankName}: ${state.merchantAccountNo}',
+                                  '${state.merchantBankName} - ${state.merchantAccountNo}',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textColor),
                                 ),
                                 Text(
@@ -1062,6 +1111,7 @@ class _PosPageState extends State<PosPage> {
                                   style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor),
                                 ),
                               ],
+                            ],
                             ],
                           ],
                         ),
@@ -1104,9 +1154,12 @@ class _PosPageState extends State<PosPage> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: Image.file(
-                                    File(state.buktiTransferPath!),
-                                    fit: BoxFit.cover,
+                                  child: GestureDetector(
+                                    onTap: () => AppTheme.showZoomedImage(context, state.buktiTransferPath),
+                                    child: Image.file(
+                                      File(state.buktiTransferPath!),
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 ),
                                 Positioned(
@@ -1201,6 +1254,7 @@ class _PosPageState extends State<PosPage> {
 
   /// Pop-up dialog setelah berhasil memproses transaksi kasir.
   void _showCheckoutSuccessDialog(BuildContext context, dynamic transaction) {
+    final state = Provider.of<AppState>(context, listen: false);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1242,16 +1296,7 @@ class _PosPageState extends State<PosPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context); // Tutup dialog sukses
-                // Arahkan ke tab riwayat transaksi.
-                // Karena kita menggunakan IndexedStack di MainShell, navigasi programatik bisa dilakukan.
-                // Tapi untuk kenyamanan pengguna, kita hanya memberi pemberitahuan atau biarkan pengguna mengklik menu Riwayat.
-                // Untuk demo yang mantap, kita bisa trigger notifikasi ke SnackBar atau tampilkan pop-up khusus.
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Silakan buka menu Riwayat untuk melihat struk digital.'),
-                    backgroundColor: AppTheme.primaryGold,
-                  ),
-                );
+                state.setTab(3); // Pindah ke tab riwayat transaksi
               },
               child: const Text('LIHAT RIWAYAT'),
             ),

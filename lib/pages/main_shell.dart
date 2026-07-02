@@ -21,7 +21,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedIndex = 0;
+
 
   // Daftar judul halaman sesuai tab
   final List<String> _titles = const [
@@ -52,7 +52,7 @@ class _MainShellState extends State<MainShell> {
         return Scaffold(
           appBar: AppBar(
             title: Text(
-              _titles[_selectedIndex],
+              _titles[state.currentTab],
               style: TextStyle(
                 color: theme.colorScheme.brightness == Brightness.dark
                     ? AppTheme.lightGold
@@ -96,7 +96,7 @@ class _MainShellState extends State<MainShell> {
                 onPressed: () => state.toggleTheme(),
               ),
               // Tombol Aksi POS Kasir jika halaman POS aktif
-              if (_selectedIndex == 1)
+              if (state.currentTab == 1)
                 IconButton(
                   icon: const Icon(Icons.cleaning_services_outlined, color: AppTheme.roseRed),
                   tooltip: 'Bersihkan Keranjang',
@@ -125,14 +125,14 @@ class _MainShellState extends State<MainShell> {
                     // Konten Utama
                     Expanded(
                       child: IndexedStack(
-                        index: _selectedIndex,
+                        index: state.currentTab,
                         children: _pages,
                       ),
                     ),
                   ],
                 )
               : IndexedStack(
-                  index: _selectedIndex,
+                  index: state.currentTab,
                   children: _pages,
                 ),
         );
@@ -271,17 +271,6 @@ class _MainShellState extends State<MainShell> {
                 ),
                 const Divider(color: Colors.white10),
                 ListTile(
-                  leading: const Icon(Icons.delete_forever_outlined, color: AppTheme.roseRed),
-                  title: const Text(
-                    'Reset Semua Data',
-                    style: TextStyle(color: AppTheme.roseRed, fontWeight: FontWeight.bold),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context); // Tutup drawer
-                    _showConfirmResetDialog(context, state);
-                  },
-                ),
-                ListTile(
                   leading: const Icon(Icons.logout, color: AppTheme.roseRed),
                   title: const Text(
                     'Keluar Akun',
@@ -321,7 +310,8 @@ class _MainShellState extends State<MainShell> {
     required IconData activeIcon,
     required String title,
   }) {
-    final isActive = _selectedIndex == index;
+    final state = Provider.of<AppState>(context, listen: false);
+    final isActive = state.currentTab == index;
     final theme = Theme.of(context);
     final goldColor = theme.colorScheme.brightness == Brightness.dark
         ? AppTheme.primaryGold
@@ -331,9 +321,7 @@ class _MainShellState extends State<MainShell> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: ListTile(
         onTap: () {
-          setState(() {
-            _selectedIndex = index;
-          });
+          state.setTab(index);
           Navigator.pop(context); // Tutup drawer setelah memilih
         },
         leading: Icon(
@@ -473,14 +461,6 @@ class _MainShellState extends State<MainShell> {
           ),
           const Divider(height: 1, color: Colors.white10),
           ListTile(
-            leading: const Icon(Icons.delete_forever_outlined, color: AppTheme.roseRed),
-            title: const Text(
-              'Reset Semua Data',
-              style: TextStyle(color: AppTheme.roseRed, fontWeight: FontWeight.bold),
-            ),
-            onTap: () => _showConfirmResetDialog(context, state),
-          ),
-          ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.roseRed),
             title: const Text(
               'Keluar Akun',
@@ -514,7 +494,8 @@ class _MainShellState extends State<MainShell> {
     required IconData activeIcon,
     required String title,
   }) {
-    final isActive = _selectedIndex == index;
+    final state = Provider.of<AppState>(context, listen: false);
+    final isActive = state.currentTab == index;
     final theme = Theme.of(context);
     final goldColor = theme.colorScheme.brightness == Brightness.dark
         ? AppTheme.primaryGold
@@ -535,9 +516,7 @@ class _MainShellState extends State<MainShell> {
           ),
           child: ListTile(
             onTap: () {
-              setState(() {
-                _selectedIndex = index;
-              });
+              state.setTab(index);
             },
             leading: Icon(
               isActive ? activeIcon : icon,
@@ -730,77 +709,6 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  /// Dialog konfirmasi untuk menghapus seluruh data lokal & cloud
-  void _showConfirmResetDialog(BuildContext context, AppState state) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: AppTheme.roseRed),
-              SizedBox(width: 10),
-              Text('Reset Semua Data?'),
-            ],
-          ),
-          content: const Text(
-            'Tindakan ini akan menghapus seluruh data produk lokal, riwayat transaksi, '
-            'dan menyinkronkan penghapusan tersebut ke database Cloud Firestore Anda (jika terhubung). '
-            'Aplikasi akan direset dengan hanya memiliki 1 data produk bawaan.\n\nApakah Anda yakin?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.roseRed,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                Navigator.pop(context); // Tutup dialog konfirmasi
-                
-                // Tampilkan loading overlay
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(
-                    child: CircularProgressIndicator(color: AppTheme.primaryGold),
-                  ),
-                );
-
-                try {
-                  await state.resetAllData();
-                  if (context.mounted) {
-                    Navigator.pop(context); // Tutup loading overlay
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Seluruh data berhasil dihapus & direset!'),
-                        backgroundColor: AppTheme.emeraldGreen,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    Navigator.pop(context); // Tutup loading overlay
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal reset data: $e'),
-                        backgroundColor: AppTheme.roseRed,
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Ya, Reset'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   /// Dialog Form Pengaturan Pembayaran (Nama Bank, No Rekening, Atas Nama, QRIS)
   void _showPaymentSettingsDialog(BuildContext context, AppState state) {
     final theme = Theme.of(context);
@@ -816,6 +724,7 @@ class _MainShellState extends State<MainShell> {
     showDialog(
       context: context,
       builder: (context) {
+        String selectedType = state.merchantPaymentType;
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -833,155 +742,182 @@ class _MainShellState extends State<MainShell> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Atur informasi QRIS & rekening bank toko Anda agar dapat ditampilkan kepada pelanggan saat checkout.',
+                          'Pilih tipe metode pembayaran non-tunai toko Anda:',
                           style: TextStyle(fontSize: 12, color: AppTheme.mutedTextColor),
                         ),
-                        const SizedBox(height: 16),
-                        
-                        // QRIS Selector
-                        const Text(
-                          'Gambar Barcode QRIS Toko:',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Center(
-                          child: GestureDetector(
-                            onTap: () async {
-                              try {
-                                final picker = ImagePicker();
-                                final picked = await picker.pickImage(
-                                  source: ImageSource.gallery,
-                                  imageQuality: 70,
-                                );
-                                if (picked != null) {
-                                  setDialogState(() {
-                                    localQrisPath = picked.path;
-                                  });
-                                }
-                              } catch (e) {
-                                debugPrint('Gagal memilih gambar QRIS: $e');
-                              }
-                            },
-                            child: Container(
-                              width: 140,
-                              height: 140,
-                              decoration: BoxDecoration(
-                                color: isDark ? AppTheme.cardColor : const Color(0xFFF1F5F9),
-                                border: Border.all(
-                                  color: goldColor.withOpacity(0.5),
-                                  width: 1.5,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(child: Text('QRIS (Gambar)')),
+                                selected: selectedType == 'QRIS',
+                                onSelected: (val) {
+                                  if (val) {
+                                    setDialogState(() {
+                                      selectedType = 'QRIS';
+                                    });
+                                  }
+                                },
                               ),
-                              child: localQrisPath != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: Stack(
-                                        children: [
-                                          Image.file(
-                                            File(localQrisPath!),
-                                            fit: BoxFit.contain,
-                                            width: 140,
-                                            height: 140,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              return const Center(
-                                                child: Icon(Icons.broken_image, color: AppTheme.roseRed, size: 40),
-                                              );
-                                            },
-                                          ),
-                                          Positioned(
-                                            top: 4,
-                                            right: 4,
-                                            child: InkWell(
-                                              onTap: () {
-                                                setDialogState(() {
-                                                  localQrisPath = null;
-                                                });
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(child: Text('Rekening Bank')),
+                                selected: selectedType == 'Transfer',
+                                onSelected: (val) {
+                                  if (val) {
+                                    setDialogState(() {
+                                      selectedType = 'Transfer';
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        if (selectedType == 'QRIS') ...[
+                          // QRIS Selector
+                          const Text(
+                            'Gambar Barcode QRIS Toko:',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: GestureDetector(
+                              onTap: () async {
+                                try {
+                                  final picker = ImagePicker();
+                                  final picked = await picker.pickImage(
+                                    source: ImageSource.gallery,
+                                    imageQuality: 70,
+                                  );
+                                  if (picked != null) {
+                                    setDialogState(() {
+                                      localQrisPath = picked.path;
+                                    });
+                                  }
+                                } catch (e) {
+                                  debugPrint('Gagal memilih gambar QRIS: $e');
+                                }
+                              },
+                              child: Container(
+                                width: 140,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppTheme.cardColor : const Color(0xFFF1F5F9),
+                                  border: Border.all(
+                                    color: goldColor.withOpacity(0.5),
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: localQrisPath != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(14),
+                                        child: Stack(
+                                          children: [
+                                            Image.file(
+                                              File(localQrisPath!),
+                                              fit: BoxFit.contain,
+                                              width: 140,
+                                              height: 140,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return const Center(
+                                                  child: Icon(Icons.broken_image, color: AppTheme.roseRed, size: 40),
+                                                );
                                               },
-                                              child: Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: const BoxDecoration(
-                                                  color: AppTheme.roseRed,
-                                                  shape: BoxShape.circle,
+                                            ),
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: InkWell(
+                                                onTap: () {
+                                                  setDialogState(() {
+                                                    localQrisPath = null;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(4),
+                                                  decoration: const BoxDecoration(
+                                                    color: AppTheme.roseRed,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(Icons.delete, color: Colors.white, size: 14),
                                                 ),
-                                                child: const Icon(Icons.delete, color: Colors.white, size: 14),
                                               ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.qr_code_2, color: goldColor, size: 40),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Upload QRIS',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: goldColor,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    )
-                                  : Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.qr_code_2, color: goldColor, size: 40),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Upload QRIS',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: goldColor,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Bank fields
-                        TextFormField(
-                          controller: bankNameController,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Nama Bank (misal: BCA, Mandiri)',
-                            prefixIcon: Icon(Icons.account_balance),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.isEmpty) {
-                              if (accountNoController.text.isNotEmpty) {
-                                return 'Wajib diisi jika Nomor Rekening diisi';
+                        ] else ...[
+                          // Bank fields
+                          TextFormField(
+                            controller: bankNameController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Nama Bank (misal: BCA, Mandiri)',
+                              prefixIcon: Icon(Icons.account_balance),
+                            ),
+                            validator: (val) {
+                              if (selectedType == 'Transfer' && (val == null || val.isEmpty)) {
+                                return 'Wajib diisi';
                               }
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: accountNoController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Nomor Rekening',
-                            prefixIcon: Icon(Icons.credit_card),
+                              return null;
+                            },
                           ),
-                          validator: (val) {
-                            if (val == null || val.isEmpty) {
-                              if (bankNameController.text.isNotEmpty) {
-                                return 'Wajib diisi jika Nama Bank diisi';
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: accountNoController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Nomor Rekening',
+                              prefixIcon: Icon(Icons.credit_card),
+                            ),
+                            validator: (val) {
+                              if (selectedType == 'Transfer' && (val == null || val.isEmpty)) {
+                                return 'Wajib diisi';
                               }
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: accountOwnerController,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Nama Pemilik Rekening (a.n.)',
-                            prefixIcon: Icon(Icons.person),
+                              return null;
+                            },
                           ),
-                          validator: (val) {
-                            if (val == null || val.isEmpty) {
-                              if (accountNoController.text.isNotEmpty) {
-                                return 'Nama Pemilik wajib diisi';
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: accountOwnerController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Nama Pemilik Rekening (a.n.)',
+                              prefixIcon: Icon(Icons.person),
+                            ),
+                            validator: (val) {
+                              if (selectedType == 'Transfer' && (val == null || val.isEmpty)) {
+                                return 'Nama pemilik wajib diisi';
                               }
-                            }
-                            return null;
-                          },
-                        ),
+                              return null;
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -996,10 +932,11 @@ class _MainShellState extends State<MainShell> {
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
                       await state.updatePaymentSettings(
-                        bankName: bankNameController.text.trim(),
-                        accountNo: accountNoController.text.trim(),
-                        accountOwner: accountOwnerController.text.trim(),
-                        qrisPath: localQrisPath,
+                        paymentType: selectedType,
+                        bankName: selectedType == 'Transfer' ? bankNameController.text.trim() : '',
+                        accountNo: selectedType == 'Transfer' ? accountNoController.text.trim() : '',
+                        accountOwner: selectedType == 'Transfer' ? accountOwnerController.text.trim() : '',
+                        qrisPath: selectedType == 'QRIS' ? localQrisPath : null,
                       );
                       if (context.mounted) {
                         Navigator.pop(context);

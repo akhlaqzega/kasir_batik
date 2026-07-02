@@ -14,32 +14,44 @@ Aplikasi ini sudah terintegrasi dengan **Firebase (Auth & Firestore)** untuk sin
    
 2. **Sistem Point of Sale (POS)**:
    - Pencarian produk dan penyaringan berdasarkan kategori produk.
-   - Keranjang belanja dinamis dengan pemilihan ukuran pakaian (S, M, L, XL, dll.).
+   - Keranjang belanja dinamis dengan pemilihan ukuran pakaian (M, L, XL, XXL) yang didesain secara adaptif dengan **High Contrast** di Light/Dark Mode.
    - Validasi stok otomatis secara real-time untuk mencegah pembelian melebihi kapasitas stok.
    - Kalkulasi otomatis: Subtotal, diskon (persentase), Pajak PPN (11%), total tagihan, dan nominal kembalian.
+   - Thumbnail gambar produk yang tampil rapi langsung di dalam list item keranjang belanja.
 
-3. **Metode Pembayaran**:
-   - **Tunai**: Input jumlah uang bayar dengan kalkulator kembalian.
-   - **QRIS / Transfer Bank**: Terintegrasi dengan kamera perangkat (`image_picker`) untuk memotret atau mengunggah gambar bukti transfer langsung ke aplikasi.
+3. **Metode Pembayaran Non-Tunai Kustom (QRIS / Rekening Bank)**:
+   - **Tunai**: Input jumlah uang bayar dengan kalkulator kembalian instan.
+   - **Non-Tunai**: Pilihan dinamis antara menggunakan **QRIS (Gambar)** atau **Transfer Bank (Teks)** yang dikonfigurasi melalui menu Pengaturan Pembayaran.
+   - Uploader Bukti Transfer: Terintegrasi dengan kamera perangkat (`image_picker`) untuk memotret bukti transfer sebagai syarat sah checkout.
+   - Banner peringatan merah terang **"Silakan buat dulu / import QRIS Anda!"** (atau pesan rekening kosong) jika metode non-tunai belum dikonfigurasi oleh admin baru.
 
-4. **Manajemen Katalog Produk (CRUD)**:
-   - Tambah produk baru dengan detail SKU, nama, kategori, harga beli, harga jual, serta alokasi stok per ukuran.
+4. **Fitur Pinch-to-Zoom Gambar**:
+   - Fitur dialog fullscreen zoom yang interaktif (`InteractiveViewer`) pada:
+     - Foto produk pada katalog utama POS.
+     - Gambar produk kecil pada list item keranjang belanja.
+     - Barcode QRIS toko saat proses pembayaran.
+     - Gambar foto bukti transfer yang diunggah oleh kasir.
+
+5. **Manajemen Katalog Produk (CRUD) & SKU Otomatis**:
+   - Tambah produk baru dengan detail nama, kategori, harga beli, harga jual, serta alokasi stok per ukuran.
+   - **SKU Otomatis**: Bidang SKU disembunyikan dari form uploader produk dan digenerate secara otomatis oleh sistem di latar belakang menggunakan prefix standar Indonesia `899`.
    - Edit detail produk atau hapus produk dari katalog.
    - Data tersimpan dan tersinkronisasi di Firestore secara personal.
 
-5. **Riwayat Penjualan & Void**:
+6. **Riwayat Penjualan, Void, & Redirect Navigasi**:
    - Melacak riwayat semua nota penjualan lengkap dengan detail item dan waktu transaksi.
    - Fitur **Batal Nota (Void)** yang secara otomatis mengembalikan stok barang yang terjual kembali ke katalog produk.
+   - **Redirect Transaksi**: Sesaat setelah kasir menekan tombol **"LIHAT RIWAYAT"** di dialog sukses transaksi, navigasi tab langsung otomatis diarahkan ke halaman Riwayat Transaksi.
 
-6. **Analisis & Grafik Keuangan**:
+7. **Analisis & Grafik Keuangan**:
    - Ringkasan performa penjualan (Pendapatan Kotor, Laba Bersih, Produk Terlaris, Jumlah Transaksi).
    - Grafik penjualan mingguan yang interaktif didukung oleh package `fl_chart`.
 
-7. **Cetak Struk PDF**:
+8. **Cetak Struk PDF**:
    - Pembuatan invoice digital berformat PDF secara dinamis.
    - Integrasi cetak struk ke printer thermal/perangkat printer lainnya (`printing` & `pdf` packages).
 
-8. **Tema Gelap & Terang (Dark/Light Mode)**:
+9. **Tema Gelap & Terang (Dark/Light Mode)**:
    - Transisi tema yang mulus untuk kenyamanan mata pengguna dalam berbagai kondisi cahaya.
    - Menyimpan preferensi tema pengguna menggunakan penyimpanan lokal.
 
@@ -67,18 +79,18 @@ Aplikasi ini sudah terintegrasi dengan **Firebase (Auth & Firestore)** untuk sin
 lib/
 ├── models/             # Representasi data (Product, CartItem, TransactionModel)
 ├── pages/              # Antarmuka Pengguna (UI)
-│   ├── dashboard_page.dart       # Grafik & statistik penjualan
-│   ├── history_page.dart         # Riwayat nota & opsi Void
-│   ├── login_page.dart           # Form masuk Firebase & Google Auth
-│   ├── pos_page.dart             # Halaman kasir utama & keranjang belanja
-│   ├── product_crud_page.dart    # Pengelolaan katalog produk & stok
-│   └── main_shell.dart           # Kerangka navigasi (bottom bar)
+├── │   ├── dashboard_page.dart       # Grafik & statistik penjualan
+├── │   ├── history_page.dart         # Riwayat nota & opsi Void
+├── │   ├── login_page.dart           # Form masuk Firebase & Google Auth
+├── │   ├── pos_page.dart             # Halaman kasir utama & keranjang belanja
+├── │   ├── product_crud_page.dart    # Pengelolaan katalog produk & stok
+├── │   └── main_shell.dart           # Kerangka navigasi (bottom bar)
 ├── services/           # Logika Firebase & Local Storage
-│   ├── auth_service.dart         # Layanan Login/Register/Google Sign-in
-│   ├── firestore_service.dart    # CRUD database cloud Firestore
-│   └── storage_service.dart      # Fallback database lokal shared_preferences
+├── │   ├── auth_service.dart         # Layanan Login/Register/Google Sign-in
+├── │   ├── firestore_service.dart    # CRUD database cloud Firestore
+├── │   └── storage_service.dart      # Fallback database lokal shared_preferences
 ├── states/             # Manajemen state aplikasi
-│   └── app_state.dart            # Pengatur logika keranjang, transaksi, & tema
+├── │   └── app_state.dart            # Pengatur logika keranjang, transaksi, & tema
 ├── app_theme.dart      # Pengaturan skema warna Light & Dark Mode
 ├── firebase_options.dart # Konfigurasi platform Firebase
 └── main.dart           # Titik masuk utama (Main entry point)

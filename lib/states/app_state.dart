@@ -45,6 +45,10 @@ class AppState extends ChangeNotifier {
   String _merchantAccountNo = '';
   String _merchantAccountOwner = '';
   String? _merchantQrisPath;
+  String _merchantPaymentType = 'QRIS'; // 'QRIS' atau 'Transfer'
+
+  // Navigasi Tab Global
+  int _currentTab = 0;
 
   // Getters
   List<Product> get products => _products;
@@ -66,6 +70,13 @@ class AppState extends ChangeNotifier {
   String get merchantAccountNo => _merchantAccountNo;
   String get merchantAccountOwner => _merchantAccountOwner;
   String? get merchantQrisPath => _merchantQrisPath;
+  String get merchantPaymentType => _merchantPaymentType;
+  int get currentTab => _currentTab;
+
+  void setTab(int index) {
+    _currentTab = index;
+    notifyListeners();
+  }
 
   /// Kategori unik dari produk yang terdaftar
   List<String> get categories {
@@ -102,6 +113,7 @@ class AppState extends ChangeNotifier {
     _merchantAccountNo = prefs.getString('merchant_account_no') ?? '';
     _merchantAccountOwner = prefs.getString('merchant_account_owner') ?? '';
     _merchantQrisPath = prefs.getString('merchant_qris_path');
+    _merchantPaymentType = prefs.getString('merchant_payment_type') ?? 'QRIS';
 
     if (_currentUser != null) {
       try {
@@ -124,10 +136,12 @@ class AppState extends ChangeNotifier {
           _merchantAccountNo = paymentSettings['accountNo'] ?? '';
           _merchantAccountOwner = paymentSettings['accountOwner'] ?? '';
           _merchantQrisPath = paymentSettings['qrisPath'];
+          _merchantPaymentType = paymentSettings['paymentType'] ?? 'QRIS';
 
           await prefs.setString('merchant_bank_name', _merchantBankName);
           await prefs.setString('merchant_account_no', _merchantAccountNo);
           await prefs.setString('merchant_account_owner', _merchantAccountOwner);
+          await prefs.setString('merchant_payment_type', _merchantPaymentType);
           if (_merchantQrisPath != null) {
             await prefs.setString('merchant_qris_path', _merchantQrisPath!);
           } else {
@@ -553,11 +567,13 @@ class AppState extends ChangeNotifier {
       await prefs.remove('merchant_account_no');
       await prefs.remove('merchant_account_owner');
       await prefs.remove('merchant_qris_path');
+      await prefs.remove('merchant_payment_type');
 
       _merchantBankName = '';
       _merchantAccountNo = '';
       _merchantAccountOwner = '';
       _merchantQrisPath = null;
+      _merchantPaymentType = 'QRIS';
 
       // 3. Muat kembali data (ini akan memicu seeding ulang dengan 1 produk saja)
       await loadData();
@@ -572,17 +588,20 @@ class AppState extends ChangeNotifier {
 
   /// Memperbarui pengaturan pembayaran merchant (QRIS & Transfer Bank)
   Future<void> updatePaymentSettings({
+    required String paymentType,
     required String bankName,
     required String accountNo,
     required String accountOwner,
     String? qrisPath,
   }) async {
+    _merchantPaymentType = paymentType;
     _merchantBankName = bankName;
     _merchantAccountNo = accountNo;
     _merchantAccountOwner = accountOwner;
     _merchantQrisPath = qrisPath;
 
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('merchant_payment_type', paymentType);
     await prefs.setString('merchant_bank_name', bankName);
     await prefs.setString('merchant_account_no', accountNo);
     await prefs.setString('merchant_account_owner', accountOwner);
@@ -595,6 +614,7 @@ class AppState extends ChangeNotifier {
     if (_currentUser != null) {
       try {
         await _firestoreService.savePaymentSettings(_currentUser!.uid, {
+          'paymentType': paymentType,
           'bankName': bankName,
           'accountNo': accountNo,
           'accountOwner': accountOwner,

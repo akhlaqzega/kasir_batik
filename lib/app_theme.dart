@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 /// Konfigurasi tema gelap mewah (Dark Premium Theme) untuk aplikasi
@@ -266,6 +267,52 @@ class AppTheme {
         bodyLarge: TextStyle(color: textColor, fontSize: 15),
         bodyMedium: TextStyle(color: mutedTextColor, fontSize: 13),
       ),
+    );
+  }
+
+  /// Membuka dialog fullscreen untuk memperbesar gambar (zoom) produk atau QRIS.
+  static void showZoomedImage(BuildContext context, String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: imagePath.startsWith('assets/')
+                      ? Image.asset(imagePath, fit: BoxFit.contain)
+                      : Image.file(
+                          File(imagePath),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Icon(Icons.broken_image, color: Colors.white, size: 48),
+                          ),
+                        ),
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: CircleAvatar(
+                  backgroundColor: Colors.black54,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -53,7 +53,7 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
                         controller: _searchController,
                         onChanged: (val) => state.setSearchQuery(val),
                         decoration: const InputDecoration(
-                          hintText: 'Cari produk berdasarkan nama atau SKU...',
+                          hintText: 'Cari produk berdasarkan nama...',
                           prefixIcon: Icon(Icons.search),
                         ),
                       ),
@@ -128,12 +128,15 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(9),
                     child: product.imagePath != null
-                        ? Image.file(
-                            File(product.imagePath!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(child: Icon(Icons.broken_image, size: 24));
-                            },
+                        ? GestureDetector(
+                            onTap: () => AppTheme.showZoomedImage(context, product.imagePath),
+                            child: Image.file(
+                              File(product.imagePath!),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(child: Icon(Icons.broken_image, size: 24));
+                              },
+                            ),
                           )
                         : Container(
                             decoration: BoxDecoration(
@@ -201,7 +204,7 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'SKU: ${product.sku}  |  Kategori: ${product.kategori}',
+                        'Kategori: ${product.kategori}',
                         style: const TextStyle(color: AppTheme.mutedTextColor, fontSize: 11),
                       ),
                     ],
