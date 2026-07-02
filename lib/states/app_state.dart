@@ -40,6 +40,12 @@ class AppState extends ChangeNotifier {
   bool _firestoreError = false;
   String? _lastFirestoreError;
 
+  // Pengaturan Pembayaran Kustom Merchant (QRIS & Rekening)
+  String _merchantBankName = '';
+  String _merchantAccountNo = '';
+  String _merchantAccountOwner = '';
+  String? _merchantQrisPath;
+
   // Getters
   List<Product> get products => _products;
   List<TransactionModel> get transactions => _transactions;
@@ -56,6 +62,10 @@ class AppState extends ChangeNotifier {
   User? get currentUser => _currentUser;
   bool get firestoreError => _firestoreError;
   String? get lastFirestoreError => _lastFirestoreError;
+  String get merchantBankName => _merchantBankName;
+  String get merchantAccountNo => _merchantAccountNo;
+  String get merchantAccountOwner => _merchantAccountOwner;
+  String? get merchantQrisPath => _merchantQrisPath;
 
   /// Kategori unik dari produk yang terdaftar
   List<String> get categories {
@@ -86,6 +96,13 @@ class AppState extends ChangeNotifier {
 
     _isDarkMode = await _storageService.getThemeMode();
 
+    // Muat data pengaturan pembayaran lokal
+    final prefs = await SharedPreferences.getInstance();
+    _merchantBankName = prefs.getString('merchant_bank_name') ?? '';
+    _merchantAccountNo = prefs.getString('merchant_account_no') ?? '';
+    _merchantAccountOwner = prefs.getString('merchant_account_owner') ?? '';
+    _merchantQrisPath = prefs.getString('merchant_qris_path');
+
     if (_currentUser != null) {
       try {
         final uid = _currentUser!.uid;
@@ -99,6 +116,25 @@ class AppState extends ChangeNotifier {
           _products = localSeed;
         }
         _transactions = await _firestoreService.getTransactions(uid);
+
+        // Ambil data pengaturan pembayaran dari Firestore
+        final paymentSettings = await _firestoreService.getPaymentSettings(uid);
+        if (paymentSettings != null) {
+          _merchantBankName = paymentSettings['bankName'] ?? '';
+          _merchantAccountNo = paymentSettings['accountNo'] ?? '';
+          _merchantAccountOwner = paymentSettings['accountOwner'] ?? '';
+          _merchantQrisPath = paymentSettings['qrisPath'];
+
+          await prefs.setString('merchant_bank_name', _merchantBankName);
+          await prefs.setString('merchant_account_no', _merchantAccountNo);
+          await prefs.setString('merchant_account_owner', _merchantAccountOwner);
+          if (_merchantQrisPath != null) {
+            await prefs.setString('merchant_qris_path', _merchantQrisPath!);
+          } else {
+            await prefs.remove('merchant_qris_path');
+          }
+        }
+
         _firestoreError = false;
         _lastFirestoreError = null;
       } catch (e) {
@@ -513,6 +549,15 @@ class AppState extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('kasir_batik_products');
       await prefs.remove('kasir_batik_transactions');
+      await prefs.remove('merchant_bank_name');
+      await prefs.remove('merchant_account_no');
+      await prefs.remove('merchant_account_owner');
+      await prefs.remove('merchant_qris_path');
+
+      _merchantBankName = '';
+      _merchantAccountNo = '';
+      _merchantAccountOwner = '';
+      _merchantQrisPath = null;
 
       // 3. Muat kembali data (ini akan memicu seeding ulang dengan 1 produk saja)
       await loadData();
@@ -523,6 +568,47 @@ class AppState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Memperbarui pengaturan pembayaran merchant (QRIS & Transfer Bank)
+  Future<void> updatePaymentSettings({
+    required String bankName,
+    required String accountNo,
+    required String accountOwner,
+    String? qrisPath,
+  }) async {
+    _merchantBankName = bankName;
+    _merchantAccountNo = accountNo;
+    _merchantAccountOwner = accountOwner;
+    _merchantQrisPath = qrisPath;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('merchant_bank_name', bankName);
+    await prefs.setString('merchant_account_no', accountNo);
+    await prefs.setString('merchant_account_owner', accountOwner);
+    if (qrisPath != null) {
+      await prefs.setString('merchant_qris_path', qrisPath);
+    } else {
+      await prefs.remove('merchant_qris_path');
+    }
+
+    if (_currentUser != null) {
+      try {
+        await _firestoreService.savePaymentSettings(_currentUser!.uid, {
+          'bankName': bankName,
+          'accountNo': accountNo,
+          'accountOwner': accountOwner,
+          'qrisPath': qrisPath,
+        });
+        _firestoreError = false;
+        _lastFirestoreError = null;
+      } catch (e) {
+        debugPrint('Gagal sinkronisasi pengaturan pembayaran ke Firestore: $e');
+        _firestoreError = true;
+        _lastFirestoreError = e.toString();
+      }
+    }
+    notifyListeners();
   }
 
   /// Membuat kode barcode acak standar Indonesia berawalan 899 (13 digit)

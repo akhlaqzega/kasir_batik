@@ -117,8 +117,42 @@ class FirestoreService {
       for (var doc in transactionsSnapshot.docs) {
         await doc.reference.delete();
       }
+
+      // 3. Hapus pengaturan pembayaran
+      await _db.collection('users').doc(uid).collection('settings').doc('payment').delete();
     } catch (e) {
       debugPrint('Gagal menghapus data user di Firestore: $e');
+      rethrow;
+    }
+  }
+
+  /// Menyimpan informasi pengaturan pembayaran merchant ke Firestore
+  Future<void> savePaymentSettings(String uid, Map<String, dynamic> settings) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(uid)
+          .collection('settings')
+          .doc('payment')
+          .set(settings);
+    } catch (e) {
+      debugPrint('Gagal menyimpan pengaturan pembayaran ke Firestore: $e');
+      rethrow;
+    }
+  }
+
+  /// Mengambil informasi pengaturan pembayaran merchant dari Firestore
+  Future<Map<String, dynamic>?> getPaymentSettings(String uid) async {
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(uid)
+          .collection('settings')
+          .doc('payment')
+          .get();
+      return doc.data();
+    } catch (e) {
+      debugPrint('Gagal mengambil pengaturan pembayaran dari Firestore: $e');
       rethrow;
     }
   }

@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../app_theme.dart';
 import '../states/app_state.dart';
 import '../services/auth_service.dart';
@@ -248,6 +250,25 @@ class _MainShellState extends State<MainShell> {
                   activeIcon: Icons.receipt_long,
                   title: 'Riwayat Transaksi',
                 ),
+                ListTile(
+                  leading: Icon(
+                    Icons.payment,
+                    color: theme.colorScheme.brightness == Brightness.dark
+                        ? AppTheme.primaryGold
+                        : AppTheme.darkGold,
+                  ),
+                  title: Text(
+                    'Pengaturan Pembayaran',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context); // Tutup drawer
+                    _showPaymentSettingsDialog(context, state);
+                  },
+                ),
                 const Divider(color: Colors.white10),
                 ListTile(
                   leading: const Icon(Icons.delete_forever_outlined, color: AppTheme.roseRed),
@@ -432,6 +453,23 @@ class _MainShellState extends State<MainShell> {
                 ),
               ],
             ),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.payment,
+              color: theme.colorScheme.brightness == Brightness.dark
+                  ? AppTheme.primaryGold
+                  : AppTheme.darkGold,
+            ),
+            title: Text(
+              'Pengaturan Pembayaran',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+            onTap: () => _showPaymentSettingsDialog(context, state),
           ),
           const Divider(height: 1, color: Colors.white10),
           ListTile(
@@ -762,4 +800,226 @@ class _MainShellState extends State<MainShell> {
       },
     );
   }
+
+  /// Dialog Form Pengaturan Pembayaran (Nama Bank, No Rekening, Atas Nama, QRIS)
+  void _showPaymentSettingsDialog(BuildContext context, AppState state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final goldColor = isDark ? AppTheme.primaryGold : AppTheme.darkGold;
+
+    final formKey = GlobalKey<FormState>();
+    final bankNameController = TextEditingController(text: state.merchantBankName);
+    final accountNoController = TextEditingController(text: state.merchantAccountNo);
+    final accountOwnerController = TextEditingController(text: state.merchantAccountOwner);
+    String? localQrisPath = state.merchantQrisPath;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                'PENGATURAN PEMBAYARAN',
+                style: TextStyle(color: goldColor, letterSpacing: 1.0, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: 450,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Atur informasi QRIS & rekening bank toko Anda agar dapat ditampilkan kepada pelanggan saat checkout.',
+                          style: TextStyle(fontSize: 12, color: AppTheme.mutedTextColor),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // QRIS Selector
+                        const Text(
+                          'Gambar Barcode QRIS Toko:',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: GestureDetector(
+                            onTap: () async {
+                              try {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  imageQuality: 70,
+                                );
+                                if (picked != null) {
+                                  setDialogState(() {
+                                    localQrisPath = picked.path;
+                                  });
+                                }
+                              } catch (e) {
+                                debugPrint('Gagal memilih gambar QRIS: $e');
+                              }
+                            },
+                            child: Container(
+                              width: 140,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                color: isDark ? AppTheme.cardColor : const Color(0xFFF1F5F9),
+                                border: Border.all(
+                                  color: goldColor.withOpacity(0.5),
+                                  width: 1.5,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: localQrisPath != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Stack(
+                                        children: [
+                                          Image.file(
+                                            File(localQrisPath!),
+                                            fit: BoxFit.contain,
+                                            width: 140,
+                                            height: 140,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return const Center(
+                                                child: Icon(Icons.broken_image, color: AppTheme.roseRed, size: 40),
+                                              );
+                                            },
+                                          ),
+                                          Positioned(
+                                            top: 4,
+                                            right: 4,
+                                            child: InkWell(
+                                              onTap: () {
+                                                setDialogState(() {
+                                                  localQrisPath = null;
+                                                });
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: const BoxDecoration(
+                                                  color: AppTheme.roseRed,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(Icons.delete, color: Colors.white, size: 14),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.qr_code_2, color: goldColor, size: 40),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Upload QRIS',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: goldColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Bank fields
+                        TextFormField(
+                          controller: bankNameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Nama Bank (misal: BCA, Mandiri)',
+                            prefixIcon: Icon(Icons.account_balance),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              if (accountNoController.text.isNotEmpty) {
+                                return 'Wajib diisi jika Nomor Rekening diisi';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: accountNoController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Nomor Rekening',
+                            prefixIcon: Icon(Icons.credit_card),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              if (bankNameController.text.isNotEmpty) {
+                                return 'Wajib diisi jika Nama Bank diisi';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: accountOwnerController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Nama Pemilik Rekening (a.n.)',
+                            prefixIcon: Icon(Icons.person),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              if (accountNoController.text.isNotEmpty) {
+                                return 'Nama Pemilik wajib diisi';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('BATAL', style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      await state.updatePaymentSettings(
+                        bankName: bankNameController.text.trim(),
+                        accountNo: accountNoController.text.trim(),
+                        accountOwner: accountOwnerController.text.trim(),
+                        qrisPath: localQrisPath,
+                      );
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Pengaturan pembayaran berhasil disimpan!'),
+                            backgroundColor: AppTheme.emeraldGreen,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('SIMPAN'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
+

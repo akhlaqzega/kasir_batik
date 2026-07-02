@@ -801,7 +801,10 @@ class _PosPageState extends State<PosPage> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final isTunai = state.metodePembayaran == 'Tunai';
-            final isProofOk = !isTunai && state.buktiTransferPath != null;
+            final isMerchantDetailsMissing = !isTunai &&
+                state.merchantQrisPath == null &&
+                state.merchantAccountNo.isEmpty;
+            final isProofOk = !isTunai && !isMerchantDetailsMissing && state.buktiTransferPath != null;
             final isCashOk = isTunai && !state.isBayarKurang;
             final canCheckout = isCashOk || isProofOk;
 
@@ -982,27 +985,84 @@ class _PosPageState extends State<PosPage> {
                         ),
                       ),
                     ] else ...[
-                      // Tampilan Rekening & Barcode Placeholder QRIS
+                      // Tampilan Rekening & Barcode Kustom QRIS
                       Center(
                         child: Column(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
+                            if (isMerchantDetailsMissing) ...[
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.roseRed.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppTheme.roseRed.withOpacity(0.3)),
+                                ),
+                                child: const Column(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, color: AppTheme.roseRed, size: 40),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Silakan buat dulu / import QRIS Anda!',
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.roseRed, fontSize: 13),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Pengaturan pembayaran non-tunai kosong. Silakan atur Rekening atau QRIS Anda di menu "Pengaturan Pembayaran".',
+                                      style: TextStyle(fontSize: 11, color: AppTheme.mutedTextColor),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              child: const Icon(Icons.qr_code_2, size: 100, color: Colors.black),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'QRIS MANDIRI MERCHANDISE',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textColor),
-                            ),
-                            const Text(
-                              'Rek: Mandiri 123-00-998877-6 (Al-Hijrah Batik)',
-                              style: TextStyle(fontSize: 12, color: AppTheme.mutedTextColor),
-                            ),
+                            ] else ...[
+                              if (state.merchantQrisPath != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppTheme.primaryGold, width: 1.5),
+                                  ),
+                                  child: Image.file(
+                                    File(state.merchantQrisPath!),
+                                    height: 180,
+                                    width: 180,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const SizedBox(
+                                        height: 100,
+                                        child: Center(
+                                          child: Icon(Icons.broken_image, color: AppTheme.roseRed, size: 40),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (state.merchantAccountNo.isNotEmpty) ...[
+                                Text(
+                                  'TRANSFER BANK',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Theme.of(context).colorScheme.brightness == Brightness.dark
+                                        ? AppTheme.primaryGold
+                                        : AppTheme.darkGold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${state.merchantBankName}: ${state.merchantAccountNo}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textColor),
+                                ),
+                                Text(
+                                  'a.n. ${state.merchantAccountOwner}',
+                                  style: const TextStyle(fontSize: 12, color: AppTheme.mutedTextColor),
+                                ),
+                              ],
+                            ],
                           ],
                         ),
                       ),

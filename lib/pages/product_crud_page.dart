@@ -305,7 +305,6 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
     final isEdit = existingProduct != null;
 
     final formKey = GlobalKey<FormState>();
-    final skuController = TextEditingController(text: existingProduct?.sku ?? '');
     final nameController = TextEditingController(text: existingProduct?.nama ?? '');
     final categoryController = TextEditingController(text: existingProduct?.kategori ?? '');
     final costController = TextEditingController(
@@ -420,54 +419,7 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
                             ),
                           ),
                         ),
-                        // SKU & Tombol Acak Barcode
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: skuController,
-                                keyboardType: TextInputType.number,
-                                enabled: !isEdit, // SKU tidak boleh diubah jika mode edit
-                                decoration: const InputDecoration(
-                                  labelText: 'SKU / Barcode',
-                                  prefixIcon: Icon(Icons.qr_code),
-                                  hintText: '899...',
-                                ),
-                                validator: (val) {
-                                  if (val == null || val.isEmpty) return 'SKU wajib diisi';
-                                  if (val.length < 5) return 'SKU minimal 5 karakter';
-                                  return null;
-                                },
-                              ),
-                            ),
-                            if (!isEdit) ...[
-                              const SizedBox(width: 8),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: InkWell(
-                                  onTap: () {
-                                    final randomSku = state.generateRandomSku();
-                                    setDialogState(() {
-                                      skuController.text = randomSku;
-                                    });
-                                  },
-                                  child: Container(
-                                    height: 52,
-                                    width: 52,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryGold.withOpacity(0.1),
-                                      border: Border.all(color: AppTheme.primaryGold),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(Icons.cached, color: AppTheme.primaryGold),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 12),
+
                         // Nama Produk
                         TextFormField(
                           controller: nameController,
@@ -565,7 +517,12 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
                 ElevatedButton(
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
-                      final sku = skuController.text.trim();
+                      String sku = existingProduct?.sku ?? state.generateRandomSku();
+                      if (existingProduct == null) {
+                        while (state.products.any((p) => p.sku == sku)) {
+                          sku = state.generateRandomSku();
+                        }
+                      }
                       final nama = nameController.text.trim();
                       final kategori = categoryController.text.trim();
                       final modal = double.parse(costController.text);
@@ -591,17 +548,6 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
                       if (isEdit) {
                         await state.updateProduk(product);
                       } else {
-                        // Cek jika SKU sudah terpakai
-                        final exists = state.products.any((p) => p.sku == sku);
-                        if (exists) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('SKU produk sudah terdaftar di katalog!'),
-                              backgroundColor: AppTheme.roseRed,
-                            ),
-                          );
-                          return;
-                        }
                         await state.tambahProduk(product);
                       }
 
@@ -626,20 +572,26 @@ class _ProductCrudPageState extends State<ProductCrudPage> {
 
   /// Membuat field input stok ukuran baju.
   Widget _buildStockField(String size, TextEditingController controller) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: TextFormField(
         controller: controller,
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white : Colors.black87,
+        ),
         decoration: InputDecoration(
           labelText: 'Size $size',
-          labelStyle: const TextStyle(fontSize: 10),
+          labelStyle: TextStyle(
+            fontSize: 10,
+            color: isDark ? AppTheme.primaryGold : AppTheme.darkGold,
+          ),
           contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          fillColor: AppTheme.bgColor,
         ),
         validator: (val) {
-          if (val == null || val.isEmpty) return 'Keterangan stok harus diisi';
+          if (val == null || val.isEmpty) return 'Stok wajib';
           if (int.tryParse(val) == null) return 'Angka';
           return null;
         },
