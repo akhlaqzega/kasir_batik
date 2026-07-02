@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "473619774469",
+    "project_id": "kasir-batik",
+    "storage_bucket": "kasir-batik.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:473619774469:android:ca81cf4cfcb943d76cf06c",
+        "android_client_info": {
+          "package_name": "com.example.kasir_batik"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "473619774469-2usu0vnkfkgpbggk0qod7n2117bcc90n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhGvxqD2CpI5_n6ghgHzR6UHOZEamyp34"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "473619774469-2usu0vnkfkgpbggk0qod7n2117bcc90n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
