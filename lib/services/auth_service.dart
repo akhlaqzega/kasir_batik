@@ -56,10 +56,18 @@ class AuthService {
 
       // 2. Mendapatkan detail autentikasi (Synchronous di v7.x+)
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw FirebaseAuthException(
+          code: 'ERROR_MISSING_GOOGLE_ID_TOKEN',
+          message: 'Gagal mendapatkan ID Token dari Google.',
+        );
+      }
 
       // 3. Membuat kredensial baru untuk Firebase
       final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
+        idToken: idToken,
       );
 
       // 4. Masuk ke Firebase menggunakan kredensial tersebut

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../models/transaction.dart';
@@ -35,6 +36,10 @@ class AppState extends ChangeNotifier {
   String? _buktiTransferPath;
   bool _isDarkMode = true;
 
+  // State Monitoring Sinkronisasi Firestore
+  bool _firestoreError = false;
+  String? _lastFirestoreError;
+
   // Getters
   List<Product> get products => _products;
   List<TransactionModel> get transactions => _transactions;
@@ -49,6 +54,8 @@ class AppState extends ChangeNotifier {
   String? get buktiTransferPath => _buktiTransferPath;
   bool get isDarkMode => _isDarkMode;
   User? get currentUser => _currentUser;
+  bool get firestoreError => _firestoreError;
+  String? get lastFirestoreError => _lastFirestoreError;
 
   /// Kategori unik dari produk yang terdaftar
   List<String> get categories {
@@ -92,14 +99,20 @@ class AppState extends ChangeNotifier {
           _products = localSeed;
         }
         _transactions = await _firestoreService.getTransactions(uid);
+        _firestoreError = false;
+        _lastFirestoreError = null;
       } catch (e) {
         debugPrint('Gagal memuat data dari Firestore: $e');
+        _firestoreError = true;
+        _lastFirestoreError = e.toString();
         _products = await _storageService.getProducts();
         _transactions = await _storageService.getTransactions();
       }
     } else {
       _products = await _storageService.getProducts();
       _transactions = await _storageService.getTransactions();
+      _firestoreError = false;
+      _lastFirestoreError = null;
     }
 
     _isLoading = false;
@@ -356,8 +369,12 @@ class AppState extends ChangeNotifier {
             await _firestoreService.saveProduct(uid, _products[prodIndex]);
           }
         }
+        _firestoreError = false;
+        _lastFirestoreError = null;
       } catch (e) {
         debugPrint('Gagal menyimpan transaksi ke Firestore: $e');
+        _firestoreError = true;
+        _lastFirestoreError = e.toString();
       }
     }
 
@@ -409,8 +426,12 @@ class AppState extends ChangeNotifier {
             await _firestoreService.saveProduct(uid, _products[prodIndex]);
           }
         }
+        _firestoreError = false;
+        _lastFirestoreError = null;
       } catch (e) {
         debugPrint('Gagal membatalkan transaksi di Firestore: $e');
+        _firestoreError = true;
+        _lastFirestoreError = e.toString();
       }
     }
 
@@ -426,8 +447,12 @@ class AppState extends ChangeNotifier {
     if (_currentUser != null) {
       try {
         await _firestoreService.saveProduct(_currentUser!.uid, product);
+        _firestoreError = false;
+        _lastFirestoreError = null;
       } catch (e) {
         debugPrint('Gagal tambah produk ke Firestore: $e');
+        _firestoreError = true;
+        _lastFirestoreError = e.toString();
       }
     }
     notifyListeners();
@@ -442,8 +467,12 @@ class AppState extends ChangeNotifier {
       if (_currentUser != null) {
         try {
           await _firestoreService.saveProduct(_currentUser!.uid, product);
+          _firestoreError = false;
+          _lastFirestoreError = null;
         } catch (e) {
           debugPrint('Gagal perbarui produk ke Firestore: $e');
+          _firestoreError = true;
+          _lastFirestoreError = e.toString();
         }
       }
       notifyListeners();
@@ -457,11 +486,43 @@ class AppState extends ChangeNotifier {
     if (_currentUser != null) {
       try {
         await _firestoreService.deleteProduct(_currentUser!.uid, sku);
+        _firestoreError = false;
+        _lastFirestoreError = null;
       } catch (e) {
         debugPrint('Gagal hapus produk dari Firestore: $e');
+        _firestoreError = true;
+        _lastFirestoreError = e.toString();
       }
     }
     notifyListeners();
+  }
+
+  /// Mereset seluruh data lokal & cloud ke keadaan awal dengan hanya 1 produk default
+  Future<void> resetAllData() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // 1. Hapus Firestore jika terhubung
+      if (_currentUser != null) {
+        final uid = _currentUser!.uid;
+        await _firestoreService.clearAllUserData(uid);
+      }
+
+      // 2. Bersihkan SharedPreferences dengan menulis ulang data kosong
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('kasir_batik_products');
+      await prefs.remove('kasir_batik_transactions');
+
+      // 3. Muat kembali data (ini akan memicu seeding ulang dengan 1 produk saja)
+      await loadData();
+    } catch (e) {
+      debugPrint('Error saat reset data: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Membuat kode barcode acak standar Indonesia berawalan 899 (13 digit)

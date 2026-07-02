@@ -73,33 +73,6 @@ class StorageService {
         stokUkuran: {'M': 10, 'L': 12, 'XL': 8, 'XXL': 3},
         imagePath: 'assets/images/koko_navy.jpg',
       ),
-      Product(
-        sku: '8991001230027',
-        nama: 'Koko Al-Hijrah Batik Onyx Grey Lengan Pendek',
-        kategori: 'Lengan Pendek',
-        hargaModal: 125000.0,
-        hargaJual: 255000.0,
-        stokUkuran: {'M': 8, 'L': 15, 'XL': 10, 'XXL': 2},
-        imagePath: 'assets/images/koko_grey.jpg',
-      ),
-      Product(
-        sku: '8991001230034',
-        nama: 'Koko Kurta Signature White Gold Lengan Panjang',
-        kategori: 'Lengan Panjang',
-        hargaModal: 135000.0,
-        hargaJual: 275000.0,
-        stokUkuran: {'M': 12, 'L': 10, 'XL': 6, 'XXL': 4},
-        imagePath: 'assets/images/koko_white_gold.png',
-      ),
-      Product(
-        sku: '8991001230041',
-        nama: 'Koko Batik Symmetrical Onyx White Lengan Panjang',
-        kategori: 'Lengan Panjang',
-        hargaModal: 145000.0,
-        hargaJual: 295000.0,
-        stokUkuran: {'M': 6, 'L': 8, 'XL': 4, 'XXL': 1},
-        imagePath: 'assets/images/koko_white_black.png',
-      ),
     ];
   }
 

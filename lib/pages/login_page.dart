@@ -96,19 +96,37 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final credential = await _authService.signInWithGoogle();
-      if (credential == null && mounted) {
-        // Pengguna membatalkan login
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      await _authService.signInWithGoogle();
     } catch (e) {
       if (mounted) {
+        String errMsg = e.toString();
+        final lowerErr = errMsg.toLowerCase();
+
+        // Cek jika dibatalkan oleh pengguna (misal user menutup dialog login)
+        if (lowerErr.contains('canceled') || lowerErr.contains('cancelled') || lowerErr.contains('abort')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Google Sign-In dibatalkan oleh pengguna.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+
+        // Cek jika error konfigurasi SHA-1 di Firebase
+        if (errMsg.contains('10') || errMsg.contains('12500')) {
+          errMsg = 'Masalah Konfigurasi (API Exception 10/12500). Harap pastikan SHA-1 sidik jari debug key Anda telah ditambahkan di Firebase Console.';
+        } else if (lowerErr.contains('network-request-failed')) {
+          errMsg = 'Koneksi internet bermasalah.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Google Sign-In gagal: ${e.toString()}'),
+            content: Text('Google Sign-In Gagal: $errMsg'),
             backgroundColor: AppTheme.roseRed,
+            duration: const Duration(seconds: 6),
           ),
         );
         setState(() {

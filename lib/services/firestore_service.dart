@@ -102,4 +102,24 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  /// Menghapus seluruh data produk dan transaksi milik pengguna dari Firestore secara rekursif
+  Future<void> clearAllUserData(String uid) async {
+    try {
+      // 1. Ambil semua produk milik user
+      final productsSnapshot = await _db.collection('users').doc(uid).collection('products').get();
+      for (var doc in productsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      
+      // 2. Ambil semua transaksi milik user
+      final transactionsSnapshot = await _db.collection('users').doc(uid).collection('transactions').get();
+      for (var doc in transactionsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('Gagal menghapus data user di Firestore: $e');
+      rethrow;
+    }
+  }
 }

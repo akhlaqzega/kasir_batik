@@ -70,6 +70,20 @@ class _MainShellState extends State<MainShell> {
                     ),
                   ),
             actions: [
+              // Indikator Sinkronisasi Firestore (Hanya muncul jika user login)
+              if (state.currentUser != null)
+                IconButton(
+                  icon: Icon(
+                    state.firestoreError ? Icons.cloud_off : Icons.cloud_done,
+                    color: state.firestoreError ? AppTheme.roseRed : AppTheme.emeraldGreen,
+                  ),
+                  tooltip: state.firestoreError
+                      ? 'Error sinkronisasi Firestore! Klik untuk info.'
+                      : 'Sinkronisasi Firestore Aktif',
+                  onPressed: () {
+                    _showSyncStatusDialog(context, state);
+                  },
+                ),
               // Tombol Toggle Tema Ganda
               IconButton(
                 icon: Icon(
@@ -235,6 +249,17 @@ class _MainShellState extends State<MainShell> {
                   title: 'Riwayat Transaksi',
                 ),
                 const Divider(color: Colors.white10),
+                ListTile(
+                  leading: const Icon(Icons.delete_forever_outlined, color: AppTheme.roseRed),
+                  title: const Text(
+                    'Reset Semua Data',
+                    style: TextStyle(color: AppTheme.roseRed, fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context); // Tutup drawer
+                    _showConfirmResetDialog(context, state);
+                  },
+                ),
                 ListTile(
                   leading: const Icon(Icons.logout, color: AppTheme.roseRed),
                   title: const Text(
@@ -410,6 +435,14 @@ class _MainShellState extends State<MainShell> {
           ),
           const Divider(height: 1, color: Colors.white10),
           ListTile(
+            leading: const Icon(Icons.delete_forever_outlined, color: AppTheme.roseRed),
+            title: const Text(
+              'Reset Semua Data',
+              style: TextStyle(color: AppTheme.roseRed, fontWeight: FontWeight.bold),
+            ),
+            onTap: () => _showConfirmResetDialog(context, state),
+          ),
+          ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.roseRed),
             title: const Text(
               'Keluar Akun',
@@ -581,6 +614,148 @@ class _MainShellState extends State<MainShell> {
                 foregroundColor: Colors.white,
               ),
               child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Dialog informasi status sinkronisasi Firestore dengan rincian kegagalan
+  void _showSyncStatusDialog(BuildContext context, AppState state) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final isError = state.firestoreError;
+        final errorMsg = state.lastFirestoreError ?? 'Tidak ada error.';
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                isError ? Icons.cloud_off : Icons.cloud_done,
+                color: isError ? AppTheme.roseRed : AppTheme.emeraldGreen,
+              ),
+              const SizedBox(width: 10),
+              const Text('Status Cloud Sync'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isError
+                    ? 'Gagal sinkronisasi dengan Cloud Firestore.'
+                    : 'Terhubung dan sinkron dengan Cloud Firestore.',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              if (isError) ...[
+                const Text(
+                  'Kemungkinan penyebab:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                const Text('• Database Cloud Firestore belum dibuat/diaktifkan di Firebase Console Anda.'),
+                const Text('• Aturan keamanan (Firestore Rules) menolak akses tulis/baca.'),
+                const Text('• Perangkat Anda tidak memiliki koneksi internet.'),
+                const SizedBox(height: 12),
+                const Text(
+                  'Detail Error:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    errorMsg,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.roseRed),
+                  ),
+                ),
+              ] else ...[
+                const Text('Setiap penambahan produk, modifikasi produk, transaksi baru, atau pembatalan nota (Void) otomatis tersinkronisasi ke Firestore secara pribadi.'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Dialog konfirmasi untuk menghapus seluruh data lokal & cloud
+  void _showConfirmResetDialog(BuildContext context, AppState state) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppTheme.roseRed),
+              SizedBox(width: 10),
+              Text('Reset Semua Data?'),
+            ],
+          ),
+          content: const Text(
+            'Tindakan ini akan menghapus seluruh data produk lokal, riwayat transaksi, '
+            'dan menyinkronkan penghapusan tersebut ke database Cloud Firestore Anda (jika terhubung). '
+            'Aplikasi akan direset dengan hanya memiliki 1 data produk bawaan.\n\nApakah Anda yakin?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.roseRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.pop(context); // Tutup dialog konfirmasi
+                
+                // Tampilkan loading overlay
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(color: AppTheme.primaryGold),
+                  ),
+                );
+
+                try {
+                  await state.resetAllData();
+                  if (context.mounted) {
+                    Navigator.pop(context); // Tutup loading overlay
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Seluruh data berhasil dihapus & direset!'),
+                        backgroundColor: AppTheme.emeraldGreen,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.pop(context); // Tutup loading overlay
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Gagal reset data: $e'),
+                        backgroundColor: AppTheme.roseRed,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Ya, Reset'),
             ),
           ],
         );
